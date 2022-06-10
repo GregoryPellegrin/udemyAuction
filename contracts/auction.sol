@@ -5,9 +5,6 @@ pragma solidity >=0.5.0 <0.9.0;
 contract Auction
 {
     address payable public owner;
-    uint public startBlock;
-    uint public endBlock;
-    string public ipfsHash;
 
     enum State {Started, Running, Ended, Canceled}
     State public auctionState;
@@ -16,7 +13,6 @@ contract Auction
 
     address payable public highestBidder;
     mapping(address => uint) public bids;
-    uint bidIncrement;
 
     //the owner can finalize the auction and get the highestBindingBid only once
     bool public ownerFinalized = false;
@@ -25,35 +21,16 @@ contract Auction
     {
         owner = payable(msg.sender);
         auctionState = State.Running;
-
-        startBlock = block.number;
-        endBlock = startBlock + 3;
-
-        ipfsHash = "";
-        bidIncrement = 1000000000000000000; // bidding in multiple of ETH
-    }
-
-    //a helper pure function (it neither reads, nor it writes to the blockchain)
-    function min (uint a, uint b) internal pure returns (uint)
-    {
-        if (a <= b)
-        {
-            return a;
-        }
-        else
-        {
-            return b;
-        }
     }
 
     // only the owner can cancel the Auction before the Auction has ended
-    function cancelAuction () public beforeEnd onlyOwner
+    function cancelAuction () public onlyOwner
     {
         auctionState = State.Canceled;
     }
 
     // the main function called to place a bid
-    function placeBid () public payable notOwner afterStart beforeEnd returns (bool)
+    function placeBid () public payable notOwner returns (bool)
     {
         // to place a bid auction should be running
         require(auctionState == State.Running, "Auction should running");
@@ -69,15 +46,9 @@ contract Auction
         // updating the mapping variable
         bids[msg.sender] = currentBid;
 
-        if (currentBid <= bids[highestBidder])
-        {
-            // highestBidder remains unchanged
-            highestBindingBid = min(currentBid + bidIncrement, bids[highestBidder]);
-        }
-        else
+        if (currentBid > bids[highestBidder])
         {
             // highestBidder is another bidder
-            highestBindingBid = min(currentBid, bids[highestBidder] + bidIncrement);
             highestBidder = payable(msg.sender);
         }
 
@@ -86,7 +57,7 @@ contract Auction
 
     function finalizeAuction () public {
         // the auction has been Canceled or Ended
-        require(auctionState == State.Canceled || block.number > endBlock, "Auction ended");
+        require(auctionState == State.Canceled, "Need auction ended");
 
         // only the owner or a bidder can finalize the auction
         require(msg.sender == owner || bids[msg.sender] > 0, "Need to be owner or bidder");
@@ -147,18 +118,6 @@ contract Auction
     modifier onlyOwner ()
     {
         require(msg.sender == owner, "Only the owner");
-        _;
-    }
-
-    modifier afterStart ()
-    {
-        require(block.number >= startBlock, "Block number not greater or equal than starting block");
-        _;
-    }
-
-    modifier beforeEnd ()
-    {
-        require(block.number <= endBlock, "Block number not lesser or equal than ending block");
         _;
     }
 }
