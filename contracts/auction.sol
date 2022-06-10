@@ -56,7 +56,7 @@ contract Auction
     function placeBid () public payable notOwner afterStart beforeEnd returns (bool)
     {
         // to place a bid auction should be running
-        require(auctionState == State.Running);
+        require(auctionState == State.Running, "Auction should running");
         // minimum value allowed to be sent
         // require(msg.value > 0.0001 ether);
 
@@ -64,7 +64,7 @@ contract Auction
 
         // the currentBid should be greater than the highestBindingBid
         // Otherwise there's nothing to do.
-        require(currentBid > highestBindingBid);
+        require(currentBid > highestBindingBid, "Bid too low");
 
         // updating the mapping variable
         bids[msg.sender] = currentBid;
@@ -86,10 +86,10 @@ contract Auction
 
     function finalizeAuction () public {
         // the auction has been Canceled or Ended
-        require(auctionState == State.Canceled || block.number > endBlock);
+        require(auctionState == State.Canceled || block.number > endBlock, "Auction ended");
 
         // only the owner or a bidder can finalize the auction
-        require(msg.sender == owner || bids[msg.sender] > 0);
+        require(msg.sender == owner || bids[msg.sender] > 0, "Need to be owner or bidder");
 
         // the recipient will get the value
         address payable recipient;
@@ -140,25 +140,25 @@ contract Auction
     // declaring function modifiers
     modifier notOwner ()
     {
-        require(msg.sender != owner);
+        require(msg.sender != owner, "Not the Owner");
         _;
     }
 
     modifier onlyOwner ()
     {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Only the owner");
         _;
     }
 
     modifier afterStart ()
     {
-        require(block.number >= startBlock);
+        require(block.number >= startBlock, "Block number not greater or equal than starting block");
         _;
     }
 
     modifier beforeEnd ()
     {
-        require(block.number <= endBlock);
+        require(block.number <= endBlock, "Block number not lesser or equal than ending block");
         _;
     }
 }
